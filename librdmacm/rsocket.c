@@ -427,7 +427,9 @@ struct ds_udp_header {
 #define DS_UDP_IPV6_HDR_LEN 28
 
 #define ds_next_qp(qp) container_of((qp)->list.next, struct ds_qp, list)
-
+// Calls write from preload.c, which performs preload initialization and calls rwrite
+// (from rsocket.c), which performs rsend
+// Writes len bytes of msg to the fd
 static void write_all(int fd, const void *msg, size_t len)
 {
 	// FIXME: if fd is a socket this really needs to handle EINTR and other conditions.
@@ -435,6 +437,8 @@ static void write_all(int fd, const void *msg, size_t len)
 	assert(rc == len);
 }
 
+// Follows similar structure as write_all, calling read from preload.c and rrecv from
+// rsocket.c
 static void read_all(int fd, void *msg, size_t len)
 {
 	// FIXME: if fd is a socket this really needs to handle EINTR and other conditions.
@@ -446,12 +450,14 @@ static void read_all(int fd, void *msg, size_t len)
  * Allocates entire pages for registered allocations so that MADV_DONTFORK will
  * not unmap valid memory in the child process when IBV_FORKSAFE is enabled.
  */
+// Ensures it is safe to use forked processes
 static void *forksafe_alloc(size_t len)
 {
 	long pagesize = sysconf(_SC_PAGESIZE);
 	void *ptr;
 	int ret;
 
+	// Interesting way of rounding up
 	len = ((len + pagesize - 1) / pagesize) * pagesize;
 	ret = posix_memalign(&ptr, pagesize, len);
 	if (ret)
@@ -461,6 +467,7 @@ static void *forksafe_alloc(size_t len)
 	return ptr;
 }
 
+// Measures time I guess
 static uint64_t rs_time_us(void)
 {
 	struct timespec now;
@@ -469,6 +476,7 @@ static uint64_t rs_time_us(void)
 	return now.tv_sec * 1000000 + now.tv_nsec / 1000;
 }
 
+// Inserts a queue pair into an rsocket linked list
 static void ds_insert_qp(struct rsocket *rs, struct ds_qp *qp)
 {
 	if (!rs->qp_list)
@@ -478,6 +486,7 @@ static void ds_insert_qp(struct rsocket *rs, struct ds_qp *qp)
 	rs->qp_list = qp;
 }
 
+// Removes a queue pair from an rsocket linked list
 static void ds_remove_qp(struct rsocket *rs, struct ds_qp *qp)
 {
 	if (qp->list.next != &qp->list) {
@@ -492,14 +501,17 @@ static int rs_notify_svc(struct rs_svc *svc, struct rsocket *rs, int cmd)
 {
 	struct rs_svc_msg msg;
 	int ret;
-
+	// Lock mutex for critical section
 	pthread_mutex_lock(&svc_mut);
 	if (!svc->cnt) {
+		// Create two sockets and store their fds in svc->sock
 		ret = socketpair(AF_UNIX, SOCK_STREAM, 0, svc->sock);
+		// If socketpair has an error, unlock and return
 		if (ret)
 			goto unlock;
-
+		// else create new pthread
 		ret = pthread_create(&svc->id, NULL, svc->run, svc);
+		// If pthread_create fails, report error and close the fds
 		if (ret) {
 			ret = ERR(ret);
 			goto closepair;
@@ -2641,7 +2653,7 @@ static int rs_send_iomaps(struct rsocket *rs, int flags)
 	struct rs_iomap_mr *iomr;
 	struct ibv_sge sge;
 	struct rs_iomap iom;
-	int ret = 0;
+	int ret;
 
 	fastlock_acquire(&rs->map_lock);
 	while (!dlist_empty(&rs->iomap_queue)) {
