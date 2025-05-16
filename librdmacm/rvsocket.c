@@ -1,4 +1,4 @@
-/*
+
 
 // ================= Functions I may need =========================
 
@@ -24,6 +24,31 @@ static void read_all(int fd, void *msg, size_t len)
 	assert(rc == len);
 }
 
+// Inserts a queue pair into an rsocket linked list
+static void ds_insert_qp(struct rsocket *rs, struct ds_qp *qp)
+{
+	if (!rs->qp_list)
+		dlist_init(&qp->list);
+	else
+		dlist_insert_head(&qp->list, &rs->qp_list->list);
+	rs->qp_list = qp;
+}
+
+// Removes a queue pair from an rsocket linked list
+static void ds_remove_qp(struct rsocket *rs, struct ds_qp *qp)
+{
+	if (qp->list.next != &qp->list) {
+		rs->qp_list = ds_next_qp(qp);
+		dlist_remove(&qp->list);
+	} else {
+		rs->qp_list = NULL;
+	}
+}
+
+// Binds the socket to the address specified by addr
+int rbind(int socket, const struct sockaddr *addr, socklen_t addrlen)
+
+// Listens for incoming connection requests on the socket
 int rlisten(int socket, int backlog)
 
 // This is for accepting connection requests, which may not apply for RVMA?
@@ -69,7 +94,3 @@ ssize_t rsendto(int socket, const void *buf, size_t len, int flags,
 		const struct sockaddr *dest_addr, socklen_t addrlen)
 
 static ssize_t rsendv(int socket, const struct iovec *iov, int iovcnt, int flags)
-
-
-
-*/

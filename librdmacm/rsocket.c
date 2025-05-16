@@ -85,6 +85,8 @@ enum {
 	RS_SVC_REM_CM,
 };
 
+// Below structures are for service messages and service threads
+
 struct rs_svc_msg {
 	uint32_t cmd;
 	uint32_t status;
@@ -162,6 +164,10 @@ enum {
 	RS_OP_IOMAP_SGL,
 	RS_OP_CTRL
 };
+
+// Immediate data format
+// bits [31:29]: message type, 0 - data, 1 - control
+// bits [28:0]: bytes transferred
 #define rs_msg_set(op, data)  ((op << 29) | (uint32_t) (data))
 #define rs_msg_op(imm_data)   (imm_data >> 29)
 #define rs_msg_data(imm_data) (imm_data & 0x1FFFFFFF)
@@ -316,6 +322,7 @@ struct ds_qp {
 	int		  cq_armed;
 };
 
+// RSocket structure
 struct rsocket {
 	int		  type;
 	int		  index;
@@ -655,6 +662,7 @@ static void rs_remove(struct rsocket *rs)
 }
 
 /* We only inherit from listening sockets */
+// Allocates and initializes a new rsocket structure
 static struct rsocket *rs_alloc(struct rsocket *inherited_rs, int type)
 {
 	struct rsocket *rs;
@@ -768,6 +776,7 @@ static void ds_set_qp_size(struct rsocket *rs)
 		rs->sbuf_size = rs->sq_size * RS_SNDLOWAT;
 }
 
+// Maybe need this for buffers?
 static int rs_init_bufs(struct rsocket *rs)
 {
 	uint32_t total_rbuf_size, total_sbuf_size;
@@ -824,6 +833,7 @@ static int rs_init_bufs(struct rsocket *rs)
 	return 0;
 }
 
+// Maybe need this for buffers?
 static int ds_init_bufs(struct ds_qp *qp)
 {
 	qp->rbuf = forksafe_alloc(qp->rs->rbuf_size + sizeof(struct ibv_grh));
@@ -1205,6 +1215,7 @@ static int ds_init_ep(struct rsocket *rs)
 	return 0;
 }
 
+// Creates a socket and returns the file descriptor
 int rsocket(int domain, int type, int protocol)
 {
 	struct rsocket *rs;
@@ -1247,6 +1258,7 @@ err:
 	return ret;
 }
 
+// Binds the socket to the address specified by addr
 int rbind(int socket, const struct sockaddr *addr, socklen_t addrlen)
 {
 	struct rsocket *rs;
@@ -1270,6 +1282,7 @@ int rbind(int socket, const struct sockaddr *addr, socklen_t addrlen)
 	return ret;
 }
 
+// Listens for incoming connection requests on the socket
 int rlisten(int socket, int backlog)
 {
 	struct rsocket *rs;
@@ -1726,6 +1739,7 @@ out:
 	return ret;
 }
 
+// Connects the socket to the address specified by addr
 int rconnect(int socket, const struct sockaddr *addr, socklen_t addrlen)
 {
 	struct rsocket *rs;
