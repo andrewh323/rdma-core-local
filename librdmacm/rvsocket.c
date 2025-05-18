@@ -1,4 +1,4 @@
-
+/* 
 
 // ================= Functions I may need =========================
 
@@ -23,6 +23,9 @@ static void read_all(int fd, void *msg, size_t len)
 	ssize_t __attribute__((unused)) rc = read(fd, msg, len);
 	assert(rc == len);
 }
+
+// Used to intialize the socket
+static void rs_configure(void)
 
 // Inserts a queue pair into an rsocket linked list
 static void ds_insert_qp(struct rsocket *rs, struct ds_qp *qp)
@@ -94,3 +97,26 @@ ssize_t rsendto(int socket, const void *buf, size_t len, int flags,
 		const struct sockaddr *dest_addr, socklen_t addrlen)
 
 static ssize_t rsendv(int socket, const struct iovec *iov, int iovcnt, int flags)
+
+static ssize_t ds_sendv_udp(struct rsocket *rs, const struct iovec *iov,
+			    int iovcnt, int flags, uint8_t op)
+
+ssize_t rsendmsg(int socket, const struct msghdr *msg, int flags)
+{
+	if (msg->msg_control && msg->msg_controllen)
+		return ERR(ENOTSUP);
+
+	return rsendv(socket, msg->msg_iov, (int) msg->msg_iovlen, flags);
+}
+
+ssize_t rwrite(int socket, const void *buf, size_t count)
+{
+	return rsend(socket, buf, count, 0);
+}
+
+int rclose(int socket)
+
+int rgetpeername(int socket, struct sockaddr *addr, socklen_t *addrlen)
+
+
+*/

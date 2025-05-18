@@ -474,7 +474,7 @@ static void *forksafe_alloc(size_t len)
 	return ptr;
 }
 
-// Measures time I guess
+// Measures time I guess, mostly for polling CQ?
 static uint64_t rs_time_us(void)
 {
 	struct timespec now;
@@ -577,6 +577,7 @@ static int rs_scale_to_value(int value, int bits)
 		(void) rc;                                                     \
 	}
 
+// Initializes the rsocket
 static void rs_configure(void)
 {
 	FILE *f;
@@ -646,6 +647,8 @@ out:
 	pthread_mutex_unlock(&mut);
 }
 
+// Inserts an rsocket into the index map
+// Used in rsocket and rs_accept
 static int rs_insert(struct rsocket *rs, int index)
 {
 	pthread_mutex_lock(&mut);
@@ -654,6 +657,8 @@ static int rs_insert(struct rsocket *rs, int index)
 	return rs->index;
 }
 
+// Removes an rsocket from the index map
+// Used to free the rsocket
 static void rs_remove(struct rsocket *rs)
 {
 	pthread_mutex_lock(&mut);
@@ -1010,6 +1015,7 @@ static void rs_free_iomappings(struct rsocket *rs)
 	}
 }
 
+// Free the queue pair
 static void ds_free_qp(struct ds_qp *qp)
 {
 	if (qp->smr)
@@ -1034,6 +1040,7 @@ static void ds_free_qp(struct ds_qp *qp)
 	free(qp);
 }
 
+// Free the datagram rsocket
 static void ds_free(struct rsocket *rs)
 {
 	struct ds_qp *qp;
@@ -1067,6 +1074,7 @@ static void ds_free(struct rsocket *rs)
 	free(rs);
 }
 
+// Free the rsocket
 static void rs_free(struct rsocket *rs)
 {
 	if (rs->type == SOCK_DGRAM) {
@@ -2011,6 +2019,7 @@ static inline int rs_2ctrl_avail(struct rsocket *rs)
 	return (int)((rs->ctrl_seqno + 1) - rs->ctrl_max_seqno) < 0;
 }
 
+// Not sure if credits and CQs are needed for RVMA
 static int rs_give_credits(struct rsocket *rs)
 {
 	if (!(rs->opts & RS_OPT_MSG_SEND)) {
